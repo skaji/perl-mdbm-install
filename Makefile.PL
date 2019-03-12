@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use ExtUtils::MakeMaker;
+use ExtUtils::MakeMaker 7.34;
 use File::Spec;
 use FindBin;
 sub run { !system @_ or do { warn "FAIL @_\n"; exit } }
@@ -54,4 +54,12 @@ WriteMakefile
     INC => '-Imdbm/include',
     LIBS => ["-lm -lpthread -lcrypto -lrt -ldl -lstdc++"],
     OBJECT => [@object, 'shakedata$(OBJ_EXT)', 'MDBM_File$(OBJ_EXT)'],
+    CONFIGURE_REQUIRES => {
+        'ExtUtils::MakeMaker' => 7.34,
+    },
+    META_MERGE => {
+        dynamic_config => 0,
+        'meta-spec' => { version => 2 },
+        x_static_install => 0,
+    },
 ;
