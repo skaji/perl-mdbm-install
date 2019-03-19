@@ -29,7 +29,7 @@ my @link = qw(
 unlink $_ for grep -l, @link;
 symlink "mdbm/src/perl/$_", $_ for @link;
 
-my @object = map { "mdbm/src/lib/object/$_\$(OBJ_EXT)" } qw(
+my @object = qw(
     hash  log  mdbm_handle_pool  mdbm_lock  mdbm
     mdbm_util multi_lock  shmem  stall_signals
 );
@@ -38,8 +38,8 @@ my @object = map { "mdbm/src/lib/object/$_\$(OBJ_EXT)" } qw(
     sub postamble {
         my $make = ($bindir ? "PATH=$bindir:$ENV{PATH} " : "") . '$(MAKE)';
         <<"...";
-@object:
-\tcd mdbm/src/lib && $make
+@{[ map { "mdbm/src/lib/object/$_\$(OBJ_EXT)" } @object ]}:
+\tcd mdbm/src/lib && $make @{[ map { "object/$_\$(OBJ_EXT)" } @object ]}
 ...
     }
 }
@@ -65,7 +65,11 @@ WriteMakefile
     LICENSE => 'BSD',
     INC => '-Imdbm/include',
     LIBS => ["-lm -lpthread -lcrypto -lrt -ldl -lstdc++ $libs"],
-    OBJECT => [@object, 'shakedata$(OBJ_EXT)', 'MDBM_File$(OBJ_EXT)'],
+    OBJECT => [
+        ( map { "mdbm/src/lib/object/$_\$(OBJ_EXT)" } @object ),
+        'shakedata$(OBJ_EXT)',
+        'MDBM_File$(OBJ_EXT)',
+    ],
     CONFIGURE_REQUIRES => {
         'ExtUtils::MakeMaker' => 7.34,
     },
