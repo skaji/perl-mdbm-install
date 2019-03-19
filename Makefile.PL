@@ -6,12 +6,12 @@ use FindBin;
 sub run { !system @_ or do { warn "FAIL @_\n"; exit } }
 
 my $bindir;
-unless (grep -x "$_/git", File::Spec->path) {
+if (!grep { -x "$_/git" && !-d _ } File::Spec->path) {
     warn "Need git command, exit"; exit;
 }
-unless (grep -x "$_/realpath", File::Spec->path) {
+if (!grep { -x "$_/realpath" && !-d _ } File::Spec->path) {
     $bindir = "$FindBin::Bin/temp_bindir";
-    unless (-d $bindir) {
+    if (!-d $bindir) {
         mkdir $bindir or die "mkdir $bindir: $!";
     }
     open my $fh, ">", "$bindir/realpath" or die "open $bindir/realpath: $!";
@@ -20,7 +20,7 @@ unless (grep -x "$_/realpath", File::Spec->path) {
     chmod 0755, "$bindir/realpath";
 }
 
-run "git", "clone", "git://github.com/yahoo/mdbm.git" unless -d "mdbm";
+run "git", "clone", "--depth=1", "git://github.com/yahoo/mdbm.git" unless -d "mdbm";
 my @link = qw(
     MDBM_File.pm MDBM_File.xs
     shakedata.cc shakedata.h
@@ -39,8 +39,20 @@ my @object = map { "mdbm/src/lib/object/$_\$(OBJ_EXT)" } qw(
         my $make = ($bindir ? "PATH=$bindir:$ENV{PATH} " : "") . '$(MAKE)';
         <<"...";
 @object:
-\tcd mdbm/src/lib && $make PEDANTIC='-Wall -pedantic -Wno-variadic-macros -Wno-long-long -Wno-overlength-strings'
+\tcd mdbm/src/lib && $make
 ...
+    }
+}
+
+my $libs = '';
+if ($^O eq 'darwin') {
+    for my $path (File::Spec->path) {
+        my $try = File::Spec->catfile($path, "brew");
+        if (-x $try && !-d $try) {
+            $libs = `$try --prefix openssl`;
+            chomp $libs;
+            $libs = "-L$libs/lib";
+        }
     }
 }
 
@@ -52,7 +64,7 @@ WriteMakefile
     # README.md says 'It is being released under the BSD license.'
     LICENSE => 'BSD',
     INC => '-Imdbm/include',
-    LIBS => ["-lm -lpthread -lcrypto -lrt -ldl -lstdc++"],
+    LIBS => ["-lm -lpthread -lcrypto -lrt -ldl -lstdc++ $libs"],
     OBJECT => [@object, 'shakedata$(OBJ_EXT)', 'MDBM_File$(OBJ_EXT)'],
     CONFIGURE_REQUIRES => {
         'ExtUtils::MakeMaker' => 7.34,
